@@ -8,7 +8,7 @@ import ProdutosPage from "./pages/ProdutosPage";
 import ClientesPage from "./pages/ClientesPage";
 import DiasNaoCobradosPage from "./pages/DiasNaoCobradosPage";
 import NovoAluguelPage from "./pages/NovoAluguelPage";
-import EditarAluguelPage from "./pages/editar/EditarAluguelPage"; // Importação atualizada para a pasta editar
+import EditarAluguelPage from "./pages/EditarAluguelPage"; // Importação atualizada para a pasta editar
 import AlugueisPage from "./pages/AlugueisPage";
 import DevolucaoPage from "./pages/DevolucaoPage";
 import FinanceiroPage from "./pages/FinanceiroPage";
