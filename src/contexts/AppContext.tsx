@@ -47,7 +47,6 @@ export function useApp() {
   return ctx;
 }
 
-// Mapeamentos para garantir compatibilidade entre Banco e Código
 function mapCustomerToCliente(c: any): Cliente {
   return {
     id: c.id, nome: c.nome ?? '', cpf: c.cpf ?? '', celular: c.celular ?? '',
@@ -92,13 +91,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (p.data) setProdutos(p.data.map(mapProductToProduto));
     
     if (a.data) {
-      const formatados = a.data.map((item: any) => ({
+      setAlugueis(a.data.map((item: any) => ({
         ...item,
         valor_antecipado: Number(item.valor_antecipado || 0),
         taxa_entrega: Number(item.taxa_entrega || 0),
         itens: item.itens || []
-      }));
-      setAlugueis(formatados);
+      })));
     }
     
     if (s.data) {
@@ -134,7 +132,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await carregarTudo();
   }, [carregarTudo]);
 
-  // 🚩 CORRIGIDO: Agora garante que o valor antecipado seja salvo no cadastro inicial
+  // 🚩 CORREÇÃO DEFINITIVA NO CADASTRO
   const criarAluguel = useCallback(async (params: any) => {
     const numero_contrato = `CTR-${Date.now()}`;
     const { error } = await supabase.rpc('criar_aluguel_v3', {
@@ -142,7 +140,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ...params, 
         numero_contrato, 
         status: 'ativo',
-        valor_antecipado: Number(params.valor_antecipado || 0),
+        valor_antecipado: Number(params.valor_antecipado || 0), // Garante que o número vá para o banco
         taxa_entrega: Number(params.taxa_entrega || 0)
       },
       p_itens: params.itens
@@ -152,10 +150,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return { numero_contrato };
   }, [carregarTudo]);
 
+  // 🚩 CORREÇÃO DEFINITIVA NA EDIÇÃO
   const atualizarAluguel = useCallback(async (id: string, params: any) => {
     const { error } = await supabase.rpc('editar_aluguel_v3', {
       p_aluguel_id: id,
-      p_aluguel: params,
+      p_aluguel: {
+        ...params,
+        valor_antecipado: Number(params.valor_antecipado || 0),
+        taxa_entrega: Number(params.taxa_entrega || 0)
+      },
       p_itens: params.itens
     });
     if (error) throw error;
