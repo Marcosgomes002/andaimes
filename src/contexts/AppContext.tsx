@@ -91,7 +91,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (c.data) setClientes(c.data.map(mapCustomerToCliente));
     if (p.data) setProdutos(p.data.map(mapProductToProduto));
     
-    // 🚩 CORREÇÃO AQUI: Forçando a leitura dos valores financeiros
     if (a.data) {
       const formatados = a.data.map((item: any) => ({
         ...item,
@@ -135,10 +134,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await carregarTudo();
   }, [carregarTudo]);
 
+  // 🚩 CORRIGIDO: Agora garante que o valor antecipado seja salvo no cadastro inicial
   const criarAluguel = useCallback(async (params: any) => {
     const numero_contrato = `CTR-${Date.now()}`;
     const { error } = await supabase.rpc('criar_aluguel_v3', {
-      p_aluguel: { ...params, numero_contrato, status: 'ativo' },
+      p_aluguel: { 
+        ...params, 
+        numero_contrato, 
+        status: 'ativo',
+        valor_antecipado: Number(params.valor_antecipado || 0),
+        taxa_entrega: Number(params.taxa_entrega || 0)
+      },
       p_itens: params.itens
     });
     if (error) throw error;
@@ -165,7 +171,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       p_valor_desconto: params.valor_desconto || 0
     });
     if (error) throw error;
-    await carregarTudo(); // 🚩 Atualiza a lista para limpar contratos finalizados
+    await carregarTudo();
   }, [carregarTudo]);
 
   const cancelarAluguel = useCallback(async (id: string) => {
