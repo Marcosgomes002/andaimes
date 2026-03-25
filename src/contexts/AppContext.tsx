@@ -16,7 +16,7 @@ interface ItemForm {
 
 export default function EditarAluguelPage() {
   const { id } = useParams();
-  const { produtos, diasNaoCobrados, atualizarAluguel, getAluguel, getProduto } = useApp();
+  const { produtos, diasNaoCobrados, atualizarAluguel, getAluguel } = useApp();
   const navigate = useNavigate();
   
   const aluguelOriginal = useMemo(() => getAluguel(id || ''), [id, getAluguel]);
@@ -30,10 +30,11 @@ export default function EditarAluguelPage() {
   const [taxaEntrega, setTaxaEntrega] = useState('');
   const [obsEntrega, setObsEntrega] = useState('');
 
+  // Carrega os dados do aluguel ao abrir a página
   useEffect(() => {
     if (aluguelOriginal) {
-      setDataInicio(aluguelOriginal.data_inicio);
-      setDataPrevista(aluguelOriginal.data_prevista_devolucao);
+      setDataInicio(aluguelOriginal.data_inicio || '');
+      setDataPrevista(aluguelOriginal.data_prevista_devolucao || '');
       setValorAntecipado(aluguelOriginal.valor_antecipado?.toString() || '0');
       setObservacoes(aluguelOriginal.observacoes || '');
       setTaxaEntrega(aluguelOriginal.taxa_entrega?.toString() || '0');
@@ -47,6 +48,7 @@ export default function EditarAluguelPage() {
     }
   }, [aluguelOriginal]);
 
+  // Reseta o cálculo se mudar qualquer dado
   useEffect(() => {
     setCalculado(false);
   }, [dataInicio, dataPrevista, itens, taxaEntrega]);
@@ -56,9 +58,10 @@ export default function EditarAluguelPage() {
     return calcularDiasCobrados(dataInicio, dataPrevista, diasNaoCobrados);
   }, [dataInicio, dataPrevista, diasNaoCobrados]);
 
+  // Gera o resumo dos itens garantindo que o nome do produto seja encontrado
   const resumoItens = useMemo(() => {
     return itens.map((item) => {
-      const produto = getProduto(item.produto_id);
+      const produto = produtos.find(p => p.id === item.produto_id);
       const qtd = parseInt(item.quantidade) || 0;
       const valorDiaria = produto?.valor_diaria || 0;
       return {
@@ -68,7 +71,7 @@ export default function EditarAluguelPage() {
         valor_diaria: valorDiaria
       };
     }).filter(i => i.produto_id);
-  }, [itens, diasCobrados, getProduto]);
+  }, [itens, diasCobrados, produtos]); // Adicionado produtos como dependência
 
   const totalPrevisto = resumoItens.reduce((acc, i) => acc + i.subtotal, 0) + (parseFloat(taxaEntrega) || 0);
 
@@ -96,14 +99,15 @@ export default function EditarAluguelPage() {
           valor_diaria: it.valor_diaria
         }))
       });
-      toast.success("Aluguel atualizado!");
+      toast.success("Aluguel atualizado com sucesso!");
       navigate('/alugueis');
     } catch (error) {
-      toast.error("Erro ao salvar.");
+      console.error(error);
+      toast.error("Erro ao salvar as alterações.");
     }
   };
 
-  if (!aluguelOriginal) return <div className="p-10 text-center font-bold">Carregando...</div>;
+  if (!aluguelOriginal) return <div className="p-10 text-center font-bold">Carregando dados do aluguel...</div>;
 
   return (
     <div className="space-y-6 max-w-4xl pb-10">
@@ -126,12 +130,22 @@ export default function EditarAluguelPage() {
               <Input type="date" value={dataPrevista} onChange={(e) => setDataPrevista(e.target.value)} />
             </div>
           </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Taxa de Entrega (R$)</Label>
+              <Input type="number" value={taxaEntrega} onChange={(e) => setTaxaEntrega(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Valor Adiantado (R$)</Label>
+              <Input type="number" value={valorAntecipado} onChange={(e) => setValorAntecipado(e.target.value)} />
+            </div>
+          </div>
         </CardContent>
       </Card>
 
       <Card className="shadow-md">
         <CardHeader className="flex flex-row items-center justify-between bg-muted/50">
-          <CardTitle className="text-sm uppercase tracking-wider">Produtos e Quantidades</CardTitle>
+          <CardTitle className="text-sm uppercase tracking-wider font-bold">Produtos e Quantidades</CardTitle>
           <Button variant="outline" size="sm" onClick={addItem} className="bg-background">
             <Plus className="h-4 w-4 mr-1" /> Adicionar Item
           </Button>
@@ -149,7 +163,7 @@ export default function EditarAluguelPage() {
                   <option value="">Selecione um produto</option>
                   {produtos.map(p => (
                     <option key={p.id} value={p.id}>
-                      {p.nome} (Disponível: {p.quantidade_disponivel})
+                      {p.nome} (Disp: {p.quantidade_disponivel})
                     </option>
                   ))}
                 </select>
@@ -174,7 +188,7 @@ export default function EditarAluguelPage() {
           ))}
 
           <Button variant="secondary" className="w-full mt-2 font-bold" onClick={() => setCalculado(true)}>
-            <Calculator className="h-4 w-4 mr-2" /> Recalcular para Salvar
+            <Calculator className="h-4 w-4 mr-2" /> Recalcular Total para Salvar
           </Button>
         </CardContent>
       </Card>
@@ -183,7 +197,7 @@ export default function EditarAluguelPage() {
         <Card className="border-primary border-2 bg-primary/5 shadow-lg">
           <CardContent className="pt-6">
             <div className="flex justify-between items-center font-bold">
-              <span>Novo Valor Total:</span>
+              <span className="text-lg">Novo Total:</span>
               <span className="text-3xl text-primary">{formatarMoeda(totalPrevisto)}</span>
             </div>
           </CardContent>
@@ -199,7 +213,7 @@ export default function EditarAluguelPage() {
           onClick={handleSalvar} 
           disabled={!calculado}
         >
-          <Save className="h-5 w-5 mr-2" /> Confirmar Alterações
+          <Save className="h-5 w-5 mr-2" /> Salvar Alterações
         </Button>
       </div>
     </div>
