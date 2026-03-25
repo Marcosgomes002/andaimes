@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useApp } from '../contexts/AppContext'; // Ajustado para a pasta certa
+import { useApp } from '../contexts/AppContext';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -16,7 +16,7 @@ interface ItemForm {
 
 export default function EditarAluguelPage() {
   const { id } = useParams();
-  const { produtos, diasNaoCobrados, atualizarAluguel, getAluguel, getProduto } = useApp();
+  const { produtos, diasNaoCobrados, atualizarAluguel, getAluguel } = useApp();
   const navigate = useNavigate();
   
   const aluguelOriginal = useMemo(() => getAluguel(id || ''), [id, getAluguel]);
@@ -52,17 +52,19 @@ export default function EditarAluguelPage() {
     return calcularDiasCobrados(dataInicio, dataPrevista, diasNaoCobrados);
   }, [dataInicio, dataPrevista, diasNaoCobrados]);
 
+  // CORREÇÃO AQUI: Adicionado 'produtos' como dependência para forçar atualização
   const resumoItens = useMemo(() => {
     return itens.map((item) => {
-      const produto = getProduto(item.produto_id);
+      // Busca direta na lista de produtos para evitar falha do getProduto
+      const produto = produtos.find(p => p.id === item.produto_id);
       return {
         ...item,
-        nome: produto?.nome || 'Produto s/ nome', // Garante que o nome apareça aqui
+        nome: produto?.nome || 'Buscando nome...', 
         valor_diaria: produto?.valor_diaria || 0,
         subtotal: (produto?.valor_diaria || 0) * (parseInt(item.quantidade) || 0) * diasCobrados
       };
-    });
-  }, [itens, diasCobrados, getProduto]);
+    }).filter(i => i.produto_id);
+  }, [itens, diasCobrados, produtos]); 
 
   const totalPrevisto = resumoItens.reduce((acc, i) => acc + i.subtotal, 0) + (parseFloat(taxaEntrega) || 0);
 
@@ -91,7 +93,7 @@ export default function EditarAluguelPage() {
     }
   };
 
-  if (!aluguelOriginal) return <div className="p-10 text-center">Carregando...</div>;
+  if (!aluguelOriginal) return <div className="p-10 text-center">Carregando dados...</div>;
 
   return (
     <div className="space-y-6 max-w-4xl pb-10">
@@ -111,7 +113,7 @@ export default function EditarAluguelPage() {
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-sm uppercase">Produtos</CardTitle>
+          <CardTitle className="text-sm uppercase font-bold">Produtos no Contrato</CardTitle>
           <Button variant="outline" size="sm" onClick={() => setItens([...itens, { produto_id: '', quantidade: '1' }])}><Plus className="h-4 w-4 mr-1" /> Adicionar</Button>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -120,11 +122,11 @@ export default function EditarAluguelPage() {
               <div className="flex-1">
                 <Label className="text-xs">Produto</Label>
                 <select
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-primary"
                   value={item.produto_id}
                   onChange={(e) => setItens(itens.map((it, i) => i === idx ? { ...it, produto_id: e.target.value } : it))}
                 >
-                  <option value="">Selecione</option>
+                  <option value="">Selecione o produto</option>
                   {produtos.map(p => (
                     <option key={p.id} value={p.id}>
                       {p.nome} -- (Disp: {p.quantidade_disponivel})
@@ -139,8 +141,8 @@ export default function EditarAluguelPage() {
               <Button variant="ghost" size="icon" onClick={() => setItens(itens.filter((_, i) => i !== idx))}><Trash2 className="h-4 w-4 text-red-500" /></Button>
             </div>
           ))}
-          <Button variant="secondary" className="w-full mt-2" onClick={() => setCalculado(true)}>
-            <Calculator className="h-4 w-4 mr-2" /> Recalcular Total
+          <Button variant="secondary" className="w-full mt-2 font-bold" onClick={() => setCalculado(true)}>
+            <Calculator className="h-4 w-4 mr-2" /> Recalcular Total para Salvar
           </Button>
         </CardContent>
       </Card>
@@ -148,15 +150,15 @@ export default function EditarAluguelPage() {
       {calculado && (
         <Card className="border-primary border-2 bg-primary/5">
           <CardContent className="pt-6 flex justify-between items-center font-bold">
-            <span>Novo Total:</span>
-            <span className="text-xl text-primary">{formatarMoeda(totalPrevisto)}</span>
+            <span className="text-lg">Novo Total Previsto:</span>
+            <span className="text-2xl text-primary">{formatarMoeda(totalPrevisto)}</span>
           </CardContent>
         </Card>
       )}
 
       <div className="flex gap-3">
         <Button variant="outline" className="flex-1" onClick={() => navigate('/alugueis')}>Cancelar</Button>
-        <Button className="flex-1" onClick={handleSalvar} disabled={!calculado}><Save className="h-4 w-4 mr-2" /> Salvar</Button>
+        <Button className="flex-1 h-12 text-lg" onClick={handleSalvar} disabled={!calculado}><Save className="h-4 w-4 mr-2" /> Salvar Alterações</Button>
       </div>
     </div>
   );
