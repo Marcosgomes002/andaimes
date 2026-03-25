@@ -1,11 +1,11 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useApp } from '@/contexts/AppContext';
+import { useApp } from '../contexts/AppContext'; 
 import { useNavigate, useParams } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { calcularDiasCobrados, formatarMoeda } from '@/utils/rentalCalculations';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { calcularDiasCobrados, formatarMoeda } from '../utils/rentalCalculations';
 import { Save, Plus, Trash2, Calculator, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -19,10 +19,8 @@ export default function EditarAluguelPage() {
   const { produtos, diasNaoCobrados, atualizarAluguel, getAluguel, getProduto } = useApp();
   const navigate = useNavigate();
   
-  // Busca o aluguel original para preencher os campos
   const aluguelOriginal = useMemo(() => getAluguel(id || ''), [id, getAluguel]);
 
-  // Estados do formulário
   const [dataInicio, setDataInicio] = useState('');
   const [dataPrevista, setDataPrevista] = useState('');
   const [valorAntecipado, setValorAntecipado] = useState('');
@@ -32,7 +30,6 @@ export default function EditarAluguelPage() {
   const [taxaEntrega, setTaxaEntrega] = useState('');
   const [obsEntrega, setObsEntrega] = useState('');
 
-  // Preenche os dados quando o aluguel é carregado
   useEffect(() => {
     if (aluguelOriginal) {
       setDataInicio(aluguelOriginal.data_inicio);
@@ -50,7 +47,6 @@ export default function EditarAluguelPage() {
     }
   }, [aluguelOriginal]);
 
-  // Obriga a recalcular se algo mudar
   useEffect(() => {
     setCalculado(false);
   }, [dataInicio, dataPrevista, itens, taxaEntrega]);
@@ -100,15 +96,14 @@ export default function EditarAluguelPage() {
           valor_diaria: it.valor_diaria
         }))
       });
-      toast.success("Aluguel atualizado com sucesso!");
+      toast.success("Aluguel atualizado!");
       navigate('/alugueis');
     } catch (error) {
-      console.error(error);
-      toast.error("Erro ao salvar as alterações.");
+      toast.error("Erro ao salvar.");
     }
   };
 
-  if (!aluguelOriginal) return <div className="p-10 text-center font-bold">Carregando dados do aluguel...</div>;
+  if (!aluguelOriginal) return <div className="p-10 text-center font-bold">Carregando...</div>;
 
   return (
     <div className="space-y-6 max-w-4xl pb-10">
@@ -120,9 +115,6 @@ export default function EditarAluguelPage() {
       </div>
 
       <Card className="shadow-md">
-        <CardHeader className="bg-muted/50">
-          <CardTitle className="text-sm uppercase tracking-wider">Informações de Prazo e Taxas</CardTitle>
-        </CardHeader>
         <CardContent className="pt-6 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -132,16 +124,6 @@ export default function EditarAluguelPage() {
             <div className="space-y-2">
               <Label>Previsão de Devolução</Label>
               <Input type="date" value={dataPrevista} onChange={(e) => setDataPrevista(e.target.value)} />
-            </div>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Taxa de Entrega (R$)</Label>
-              <Input type="number" value={taxaEntrega} onChange={(e) => setTaxaEntrega(e.target.value)} placeholder="0.00" />
-            </div>
-            <div className="space-y-2">
-              <Label>Valor Adiantado (R$)</Label>
-              <Input type="number" value={valorAntecipado} onChange={(e) => setValorAntecipado(e.target.value)} placeholder="0.00" />
             </div>
           </div>
         </CardContent>
@@ -198,13 +180,10 @@ export default function EditarAluguelPage() {
       </Card>
 
       {calculado && (
-        <Card className="border-primary border-2 bg-primary/5 shadow-lg animate-in fade-in zoom-in duration-300">
+        <Card className="border-primary border-2 bg-primary/5 shadow-lg">
           <CardContent className="pt-6">
             <div className="flex justify-between items-center font-bold">
-              <div className="flex flex-col">
-                <span className="text-muted-foreground text-sm uppercase">Novo Valor Total</span>
-                <span className="text-xs text-muted-foreground">{diasCobrados} dias cobrados</span>
-              </div>
+              <span>Novo Valor Total:</span>
               <span className="text-3xl text-primary">{formatarMoeda(totalPrevisto)}</span>
             </div>
           </CardContent>
@@ -212,11 +191,11 @@ export default function EditarAluguelPage() {
       )}
 
       <div className="flex gap-4 pt-4">
-        <Button variant="outline" className="flex-1 h-12 text-lg" onClick={() => navigate('/alugueis')}>
+        <Button variant="outline" className="flex-1 h-12" onClick={() => navigate('/alugueis')}>
           Cancelar
         </Button>
         <Button 
-          className="flex-1 h-12 text-lg shadow-lg" 
+          className="flex-1 h-12 shadow-lg" 
           onClick={handleSalvar} 
           disabled={!calculado}
         >
