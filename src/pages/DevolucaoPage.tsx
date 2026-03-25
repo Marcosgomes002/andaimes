@@ -1,14 +1,14 @@
-import { useState, useMemo } from 'react';
-import { useApp } from '@/contexts/AppContext';
+import { useState, useMemo, useEffect } from 'react';
+import { useApp } from '../contexts/AppContext';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { formatarMoeda, formatarData, calcularDiasCobrados } from '@/utils/rentalCalculations';
-import { RotateCcw, Calculator } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Textarea } from '../components/ui/textarea';
+import { formatarMoeda, formatarData, calcularDiasCobrados } from '../utils/rentalCalculations';
+import { RotateCcw, Calculator, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function DevolucaoPage() {
@@ -19,12 +19,12 @@ export default function DevolucaoPage() {
   const [aluguelId, setAluguelId] = useState(searchParams.get('id') || '');
   const [dataDevolucao, setDataDevolucao] = useState(new Date().toISOString().split('T')[0]);
   const [valorAvaria, setValorAvaria] = useState('');
-  const [valorDesconto, setValorDesconto] = useState(''); // 🚩 Estado do Desconto
+  const [valorDesconto, setValorDesconto] = useState('');
   const [obsAvaria, setObsAvaria] = useState('');
   const [calculado, setCalculado] = useState(false);
 
-  const alugueisAbertos = alugueis.filter((a) => a.status !== 'finalizado');
-  const aluguel = alugueis.find((a) => a.id === aluguelId);
+  const alugueisAbertos = alugueis.filter((a) => a.status !== 'finalizado' && a.status !== 'cancelado');
+  const aluguel = useMemo(() => alugueis.find((a) => a.id === aluguelId), [alugueis, aluguelId]);
 
   const handleAluguelChange = (id: string) => {
     setAluguelId(id);
@@ -45,13 +45,17 @@ export default function DevolucaoPage() {
   }, [aluguel]);
 
   const valorAvariaNumero = parseFloat(valorAvaria) || 0;
-  const valorDescontoNumero = parseFloat(valorDesconto) || 0; // 🚩 Valor do Desconto
-  const valorBaseAluguel = diasCobradosReal * valorDiariasPorDia;
-  const valorJaPago = aluguel?.pagamento_antecipado ? Number(aluguel.valor_antecipado) : 0;
+  const valorDescontoNumero = parseFloat(valorDesconto) || 0;
+  const valorBaseAluguel = (diasCobradosReal * valorDiariasPorDia) + (Number(aluguel?.taxa_entrega) || 0);
   
-  // 🚩 O cálculo agora subtrai o desconto do total
-  const valorTotalCalculado = valorBaseAluguel + valorAvariaNumero - valorDescontoNumero;
-  const valorFaltaPagar = Math.max(0, valorTotalCalculado - valorJaPago);
+  // 🚩 CORREÇÃO: Buscando o valor antecipado do banco de dados
+  const valorJaPago = useMemo(() => {
+    if (!aluguel) return 0;
+    return Number(aluguel.valor_antecipado || 0);
+  }, [aluguel]);
+  
+  const valorTotalComAvarias = valorBaseAluguel + valorAvariaNumero - valorDescontoNumero;
+  const saldoFinal = valorTotalComComAvarias - valorJaPago;
 
   const handleCalcular = () => {
     if (!aluguel) return toast.error('Selecione um aluguel');
@@ -68,7 +72,7 @@ export default function DevolucaoPage() {
         aluguel_id: aluguel.id,
         data_devolucao: dataDevolucao,
         valor_avaria: valorAvariaNumero,
-        valor_desconto: valorDescontoNumero, // 🚩 Enviando o desconto para o AppContext
+        valor_desconto: valorDescontoNumero,
         observacoes_avaria: obsAvaria,
       });
 
@@ -81,15 +85,18 @@ export default function DevolucaoPage() {
 
   return (
     <div className="max-w-4xl space-y-6 pb-10">
-      <h2 className="flex items-center gap-2 text-2xl font-bold">
-        <RotateCcw className="h-6 w-6" /> Registrar Devolução
-      </h2>
+      <div className="flex items-center gap-4">
+        <Button variant="outline" size="icon" onClick={() => navigate('/alugueis')}><ArrowLeft className="h-4 w-4" /></Button>
+        <h2 className="text-2xl font-bold flex items-center gap-2">
+          <RotateCcw className="h-6 w-6" /> Registrar Devolução
+        </h2>
+      </div>
 
       <Card>
         <CardContent className="space-y-4 pt-6">
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <Label>Selecionar Aluguel</Label>
+              <Label>Selecionar Contrato</Label>
               <select
                 value={aluguelId}
                 onChange={(e) => handleAluguelChange(e.target.value)}
@@ -109,15 +116,11 @@ export default function DevolucaoPage() {
               <Input
                 type="date"
                 value={dataDevolucao}
-                onChange={(e) => {
-                  setDataDevolucao(e.target.value);
-                  setCalculado(false);
-                }}
+                onChange={(e) => { setDataDevolucao(e.target.value); setCalculado(false); }}
               />
             </div>
           </div>
-
-          <Button onClick={handleCalcular} type="button">
+          <Button onClick={handleCalcular} className="w-full sm:w-auto">
             <Calculator className="mr-2 h-4 w-4" /> Calcular Valores
           </Button>
         </CardContent>
@@ -126,108 +129,67 @@ export default function DevolucaoPage() {
       {aluguel && (
         <>
           <Card>
-            <CardHeader><CardTitle>Resumo do Contrato</CardTitle></CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
-                <div><strong>Cliente:</strong> {getCliente(aluguel.cliente_id)?.nome}</div>
-                <div><strong>Início:</strong> {formatarData(aluguel.data_inicio)}</div>
-                <div><strong>Previsão:</strong> {formatarData(aluguel.data_prevista_devolucao)}</div>
-                <div><strong>Dias Cobrados:</strong> {diasCobradosReal}</div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader><CardTitle>Itens Devolvidos</CardTitle></CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Produto</TableHead>
-                    <TableHead className="text-center">Quantidade Alugada</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {aluguel.itens.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell>{getProduto(item.produto_id)?.nome}</TableCell>
-                      <TableCell className="text-center">{item.quantidade}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader><CardTitle>Financeiro e Descontos</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
+            <CardHeader className="bg-muted/30"><CardTitle className="text-sm uppercase font-bold">Resumo Financeiro</CardTitle></CardHeader>
+            <CardContent className="pt-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label>Valor de Avaria/Perda (R$)</Label>
-                  <Input
-                    type="number"
-                    value={valorAvaria}
-                    onChange={(e) => { setValorAvaria(e.target.value); setCalculado(false); }}
-                    placeholder="0,00"
-                  />
+                  <Input type="number" value={valorAvaria} onChange={(e) => {setValorAvaria(e.target.value); setCalculado(false);}} placeholder="0,00" />
                 </div>
                 <div>
-                  <Label className="text-green-600 font-bold">Conceder Desconto (R$)</Label>
-                  <Input
-                    type="number"
-                    className="border-green-300 focus-visible:ring-green-500"
-                    value={valorDesconto}
-                    onChange={(e) => { setValorDesconto(e.target.value); setCalculado(false); }}
-                    placeholder="0,00"
-                  />
+                  <Label className="text-green-600 font-bold">Desconto (R$)</Label>
+                  <Input type="number" className="border-green-200" value={valorDesconto} onChange={(e) => {setValorDesconto(e.target.value); setCalculado(false);}} placeholder="0,00" />
                 </div>
               </div>
-              <div>
-                <Label>Observações da Devolução</Label>
-                <Textarea
-                  value={obsAvaria}
-                  onChange={(e) => setObsAvaria(e.target.value)}
-                  placeholder="Ex: Cliente bom pagador, concedido desconto de arredondamento..."
-                />
-              </div>
+              <Textarea value={obsAvaria} onChange={(e) => setObsAvaria(e.target.value)} placeholder="Observações sobre avarias ou motivos do desconto..." />
             </CardContent>
           </Card>
 
           {calculado && (
-            <Card className="border-2 border-primary bg-primary/5">
-              <CardContent className="space-y-2 pt-6">
+            <Card className="border-2 border-primary bg-primary/5 shadow-lg">
+              <CardContent className="space-y-3 pt-6">
                 <div className="flex justify-between text-sm">
-                  <span>Valor do Aluguel ({diasCobradosReal} dias)</span>
+                  <span>Aluguel ({diasCobradosReal} dias) + Entrega:</span>
                   <span>{formatarMoeda(valorBaseAluguel)}</span>
                 </div>
                 {valorAvariaNumero > 0 && (
                   <div className="flex justify-between text-sm text-destructive">
-                    <span>(+) Avarias/Perdas</span>
+                    <span>(+) Avarias/Perdas:</span>
                     <span>{formatarMoeda(valorAvariaNumero)}</span>
                   </div>
                 )}
                 {valorDescontoNumero > 0 && (
-                  <div className="flex justify-between text-sm text-green-600 font-bold">
-                    <span>(-) Desconto Concedido</span>
+                  <div className="flex justify-between text-sm text-green-600">
+                    <span>(-) Desconto Concedido:</span>
                     <span>{formatarMoeda(valorDescontoNumero)}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-sm border-b pb-2">
-                  <span>Valor já pago (Antecipado)</span>
-                  <span className="text-blue-600">-{formatarMoeda(valorJaPago)}</span>
+                <div className="flex justify-between text-sm border-t pt-2 font-semibold">
+                  <span>Subtotal:</span>
+                  <span>{formatarMoeda(valorTotalComAvarias)}</span>
                 </div>
-                <div className="flex justify-between text-lg font-bold">
-                  <span>Saldo Final a Receber</span>
-                  <span className="text-primary">{formatarMoeda(valorFaltaPagar)}</span>
+                <div className="flex justify-between text-sm text-blue-600 italic">
+                  <span>(-) Valor Antecipado (Pago no início):</span>
+                  <span>{formatarMoeda(valorJaPago)}</span>
                 </div>
+                <div className="flex justify-between text-xl font-bold border-t-2 border-primary pt-3 mt-2">
+                  <span>SALDO FINAL:</span>
+                  <span className={saldoFinal >= 0 ? "text-primary" : "text-blue-600"}>
+                    {formatarMoeda(saldoFinal)}
+                  </span>
+                </div>
+                {saldoFinal < 0 && (
+                  <p className="text-xs text-blue-600 text-right font-medium">
+                    * Valor negativo indica que o cliente tem crédito ou troco a receber.
+                  </p>
+                )}
               </CardContent>
             </Card>
           )}
 
           <div className="flex gap-4">
             <Button variant="outline" className="flex-1" onClick={() => navigate('/alugueis')}>Cancelar</Button>
-            <Button className="flex-1" onClick={confirmar}>Finalizar e Devolver ao Estoque</Button>
+            <Button className="flex-1 h-12 shadow-md" onClick={confirmar} disabled={!calculado}>Finalizar Devolução</Button>
           </div>
         </>
       )}
