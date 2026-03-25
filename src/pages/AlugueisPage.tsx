@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { StatusBadge } from '@/components/StatusBadge';
 import { formatarMoeda, formatarData, calcularStatusAluguel } from '@/utils/rentalCalculations';
-import { FileText, Search, Printer, XCircle, Pencil } from 'lucide-react'; // Importado o Pencil
+import { FileText, Search, Printer, XCircle, Pencil } from 'lucide-react'; // Ícone Pencil adicionado
 
 export default function AlugueisPage() {
   const { alugueis, getCliente, getProduto, cancelarAluguel } = useApp();
@@ -115,19 +115,19 @@ export default function AlugueisPage() {
                     <TableCell><StatusBadge status={a.statusCalculado} /></TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => setDetalhes(a.id)} title="Ver Detalhes">
+                        <Button variant="ghost" size="sm" onClick={() => setDetalhes(a.id)}>
                           Detalhes
                         </Button>
 
-                        {/* --- BOTÃO DE EDITAR ADICIONADO --- */}
+                        {/* BOTÃO EDITAR ADICIONADO AQUI */}
                         {a.statusCalculado !== 'finalizado' && a.statusCalculado !== 'cancelado' && (
                           <Button 
                             variant="ghost" 
                             size="sm" 
                             onClick={() => navigate(`/alugueis/editar/${a.id}`)}
-                            title="Editar Aluguel"
+                            className="text-blue-600 hover:text-blue-800"
                           >
-                            <Pencil className="h-4 w-4 text-blue-500" />
+                            <Pencil className="h-4 w-4" />
                           </Button>
                         )}
 
@@ -168,8 +168,8 @@ export default function AlugueisPage() {
           </div>
         </CardContent>
       </Card>
-
-      {/* Seção de detalhes... (mantida igual) */}
+      
+      {/* Restante do código de detalhes... */}
       {aluguelDetalhe && (
         <Card className="mt-4">
           <CardContent className="pt-6">

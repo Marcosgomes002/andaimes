@@ -1,12 +1,11 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useApp } from '@/contexts/AppContext';
+import { useApp } from '../contexts/AppContext'; // AJUSTADO: Voltou um nível
 import { useNavigate, useParams } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { calcularDiasCobrados, formatarMoeda } from '@/utils/rentalCalculations';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'; // AJUSTADO
+import { Button } from '../components/ui/button'; // AJUSTADO
+import { Input } from '../components/ui/input'; // AJUSTADO
+import { Label } from '../components/ui/label'; // AJUSTADO
+import { calcularDiasCobrados, formatarMoeda } from '../utils/rentalCalculations'; // AJUSTADO
 import { Save, Plus, Trash2, Calculator, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -24,7 +23,6 @@ export default function EditarAluguelPage() {
 
   const [dataInicio, setDataInicio] = useState('');
   const [dataPrevista, setDataPrevista] = useState('');
-  const [pagAntecipado, setPagAntecipado] = useState(false);
   const [valorAntecipado, setValorAntecipado] = useState('');
   const [observacoes, setObservacoes] = useState('');
   const [itens, setItens] = useState<ItemForm[]>([]);
@@ -36,8 +34,7 @@ export default function EditarAluguelPage() {
     if (aluguelOriginal) {
       setDataInicio(aluguelOriginal.data_inicio);
       setDataPrevista(aluguelOriginal.data_prevista_devolucao);
-      setPagAntecipado(aluguelOriginal.pagamento_antecipado);
-      setValorAntecipado(aluguelOriginal.valor_antecipado.toString());
+      setValorAntecipado(aluguelOriginal.valor_antecipado?.toString() || '0');
       setObservacoes(aluguelOriginal.observacoes || '');
       setTaxaEntrega(aluguelOriginal.taxa_entrega?.toString() || '0');
       setObsEntrega(aluguelOriginal.observacoes_entrega || '');
@@ -66,7 +63,7 @@ export default function EditarAluguelPage() {
       const valorDiaria = produto?.valor_diaria || 0;
       return {
         ...item,
-        nome: produto?.nome || '',
+        nome: produto?.nome || 'Produto não encontrado',
         subtotal: qtd * valorDiaria * diasCobrados,
         valor_diaria: valorDiaria
       };
@@ -79,12 +76,16 @@ export default function EditarAluguelPage() {
   const removeItem = (idx: number) => setItens(itens.filter((_, i) => i !== idx));
 
   const handleSalvar = async () => {
+    if (!calculado) {
+      toast.error("Clique em Recalcular antes de salvar.");
+      return;
+    }
+
     try {
       await atualizarAluguel(id!, {
         data_inicio: dataInicio,
         dias_contratados: diasCobrados,
         data_prevista_devolucao: dataPrevista,
-        pagamento_antecipado: pagAntecipado,
         valor_antecipado: parseFloat(valorAntecipado) || 0,
         taxa_entrega: parseFloat(taxaEntrega) || 0,
         observacoes_entrega: obsEntrega,
@@ -114,48 +115,50 @@ export default function EditarAluguelPage() {
       <Card>
         <CardContent className="pt-6 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div><Label>Início</Label><Input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} /></div>
-            <div><Label>Previsão Devolução</Label><Input type="date" value={dataPrevista} onChange={(e) => setDataPrevista(e.target.value)} /></div>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div><Label>Taxa Entrega (R$)</Label><Input type="number" value={taxaEntrega} onChange={(e) => setTaxaEntrega(e.target.value)} /></div>
-            <div><Label>Adiantamento (R$)</Label><Input type="number" value={valorAntecipado} onChange={(e) => setValorAntecipado(e.target.value)} /></div>
+            <div className="space-y-2"><Label>Início</Label><Input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} /></div>
+            <div className="space-y-2"><Label>Previsão Devolução</Label><Input type="date" value={dataPrevista} onChange={(e) => setDataPrevista(e.target.value)} /></div>
           </div>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Produtos</CardTitle>
+          <CardTitle className="text-sm uppercase">Produtos</CardTitle>
           <Button variant="outline" size="sm" onClick={addItem}><Plus className="h-4 w-4 mr-1" /> Adicionar</Button>
         </CardHeader>
         <CardContent className="space-y-4">
           {itens.map((item, idx) => (
-            <div key={idx} className="flex gap-3 items-end">
+            <div key={idx} className="flex gap-3 items-end border-b pb-4">
               <div className="flex-1">
+                <Label className="text-xs">Produto</Label>
                 <select
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   value={item.produto_id}
                   onChange={(e) => setItens(itens.map((it, i) => i === idx ? { ...it, produto_id: e.target.value } : it))}
                 >
                   <option value="">Selecione</option>
-                  {produtos.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                  {produtos.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.nome} (Disponível: {p.quantidade_disponivel})
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="w-24">
+                <Label className="text-xs">Qtd</Label>
                 <Input type="number" value={item.quantidade} onChange={(e) => setItens(itens.map((it, i) => i === idx ? { ...it, quantidade: e.target.value } : it))} />
               </div>
               <Button variant="ghost" size="icon" onClick={() => removeItem(idx)}><Trash2 className="h-4 w-4 text-red-500" /></Button>
             </div>
           ))}
-          <Button variant="secondary" className="w-full" onClick={() => setCalculado(true)}>
+          <Button variant="secondary" className="w-full mt-2" onClick={() => setCalculado(true)}>
             <Calculator className="h-4 w-4 mr-2" /> Recalcular Total
           </Button>
         </CardContent>
       </Card>
 
       {calculado && (
-        <Card className="border-primary border-2">
+        <Card className="border-primary border-2 bg-primary/5">
           <CardContent className="pt-6">
             <div className="flex justify-between items-center font-bold">
               <span>Novo Total:</span>
