@@ -7,20 +7,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { StatusBadge } from '@/components/StatusBadge';
 import { formatarMoeda, formatarData, calcularStatusAluguel } from '@/utils/rentalCalculations';
-import { FileText, Search, Printer, XCircle, ListFilter } from 'lucide-react';
+import { FileText, Search, Printer, XCircle, Pencil } from 'lucide-react'; // Importado o Pencil
 
 export default function AlugueisPage() {
   const { alugueis, getCliente, getProduto, cancelarAluguel } = useApp();
   const navigate = useNavigate();
 
-  // 🚩 Inicia filtrando apenas os ativos
   const [verApenasAtivos, setVerApenasAtivos] = useState(true);
   const [busca, setBusca] = useState('');
   const [detalhes, setDetalhes] = useState<string | null>(null);
 
   const hoje = new Date();
 
-  // Mapeia os status calculados
   const alugueisComStatus = useMemo(() => {
     return alugueis.map((a) => ({
       ...a,
@@ -31,11 +29,9 @@ export default function AlugueisPage() {
     }));
   }, [alugueis, hoje]);
 
-  // Lógica de Filtro e Busca
   const filtrados = useMemo(() => {
     return alugueisComStatus
       .filter((a) => {
-        // Se o filtro de ativos estiver ligado, esconde finalizados e cancelados
         if (verApenasAtivos && (a.status === 'finalizado' || a.status === 'cancelado')) {
           return false;
         }
@@ -119,9 +115,21 @@ export default function AlugueisPage() {
                     <TableCell><StatusBadge status={a.statusCalculado} /></TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => setDetalhes(a.id)}>
+                        <Button variant="ghost" size="sm" onClick={() => setDetalhes(a.id)} title="Ver Detalhes">
                           Detalhes
                         </Button>
+
+                        {/* --- BOTÃO DE EDITAR ADICIONADO --- */}
+                        {a.statusCalculado !== 'finalizado' && a.statusCalculado !== 'cancelado' && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => navigate(`/alugueis/editar/${a.id}`)}
+                            title="Editar Aluguel"
+                          >
+                            <Pencil className="h-4 w-4 text-blue-500" />
+                          </Button>
+                        )}
 
                         {a.statusCalculado !== 'finalizado' && a.statusCalculado !== 'cancelado' && (
                           <Button 
@@ -161,6 +169,7 @@ export default function AlugueisPage() {
         </CardContent>
       </Card>
 
+      {/* Seção de detalhes... (mantida igual) */}
       {aluguelDetalhe && (
         <Card className="mt-4">
           <CardContent className="pt-6">
