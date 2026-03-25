@@ -9,20 +9,25 @@ import { toast } from 'sonner';
 
 export default function ConfiguracoesPage() {
   const { dadosEmpresa, atualizarDadosEmpresa } = useApp();
+  // Inicializa o formulário com os dados que vêm do Contexto
   const [form, setForm] = useState(dadosEmpresa);
   const [salvando, setSalvando] = useState(false);
 
+  // Sincroniza o formulário sempre que os dados da empresa carregarem do banco
   useEffect(() => {
-    setForm(dadosEmpresa);
+    if (dadosEmpresa) {
+      setForm(dadosEmpresa);
+    }
   }, [dadosEmpresa]);
 
   const salvar = async () => {
     try {
       setSalvando(true);
+      // Envia os dados atualizados para a função que grava no Supabase
       await atualizarDadosEmpresa(form);
       toast.success('Dados da empresa atualizados com sucesso!');
     } catch (error) {
-      console.error(error);
+      console.error('Erro ao salvar:', error);
       toast.error('Erro ao salvar dados da empresa no banco.');
     } finally {
       setSalvando(false);
@@ -44,24 +49,27 @@ export default function ConfiguracoesPage() {
           <div>
             <Label>Nome da Empresa</Label>
             <Input
-              value={form.nome}
-              onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))}
+              value={form?.name || ''}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              placeholder="Ex: ConstruMaia Material de Construção"
             />
           </div>
 
           <div>
             <Label>CNPJ</Label>
             <Input
-              value={form.cnpj}
+              value={form?.cnpj || ''}
               onChange={(e) => setForm((f) => ({ ...f, cnpj: e.target.value }))}
+              placeholder="00.000.000/0000-00"
             />
           </div>
 
           <div>
             <Label>Endereço</Label>
             <Input
-              value={form.endereco}
-              onChange={(e) => setForm((f) => ({ ...f, endereco: e.target.value }))}
+              value={form?.address || ''}
+              onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
+              placeholder="Rua, Número, Bairro, Cidade"
             />
           </div>
 
@@ -69,16 +77,18 @@ export default function ConfiguracoesPage() {
             <div>
               <Label>Telefone</Label>
               <Input
-                value={form.telefone}
-                onChange={(e) => setForm((f) => ({ ...f, telefone: e.target.value }))}
+                value={form?.phone || ''}
+                onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+                placeholder="(00) 0000-0000"
               />
             </div>
 
             <div>
               <Label>WhatsApp</Label>
               <Input
-                value={form.whatsapp}
+                value={form?.whatsapp || ''}
                 onChange={(e) => setForm((f) => ({ ...f, whatsapp: e.target.value }))}
+                placeholder="(00) 00000-0000"
               />
             </div>
           </div>
@@ -86,20 +96,28 @@ export default function ConfiguracoesPage() {
           <div>
             <Label>E-mail</Label>
             <Input
-              value={form.email}
+              type="email"
+              value={form?.email || ''}
               onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+              placeholder="empresa@email.com"
             />
           </div>
 
           <div>
             <Label>Responsável</Label>
             <Input
-              value={form.responsavel}
-              onChange={(e) => setForm((f) => ({ ...f, responsavel: e.target.value }))}
+              value={form?.responsible_name || ''}
+              onChange={(e) => setForm((f) => ({ ...f, responsible_name: e.target.value }))}
+              placeholder="Nome do responsável"
             />
           </div>
 
-          <Button type="button" onClick={salvar} disabled={salvando}>
+          <Button 
+            type="button" 
+            onClick={salvar} 
+            disabled={salvando}
+            className="w-full md:w-auto"
+          >
             {salvando ? 'Salvando...' : 'Salvar Configurações'}
           </Button>
         </CardContent>
