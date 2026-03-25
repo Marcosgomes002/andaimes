@@ -47,7 +47,7 @@ export function useApp() {
   return ctx;
 }
 
-// Mapeamentos para garantir compatibilidade entre Banco (Inglês) e Código (Português)
+// Mapeamentos para garantir compatibilidade entre Banco e Código
 function mapCustomerToCliente(c: any): Cliente {
   return {
     id: c.id, nome: c.nome ?? '', cpf: c.cpf ?? '', celular: c.celular ?? '',
@@ -59,7 +59,7 @@ function mapCustomerToCliente(c: any): Cliente {
 function mapProductToProduto(p: any): Produto {
   return {
     id: p.id, 
-    nome: p.name || p.nome || '', // Pega 'name' do Supabase e salva como 'nome'
+    nome: p.name || p.nome || '', 
     categoria: p.category ?? '', 
     descricao: p.description ?? '',
     valor_diaria: Number(p.daily_rate ?? 0), 
@@ -90,16 +90,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     if (c.data) setClientes(c.data.map(mapCustomerToCliente));
     if (p.data) setProdutos(p.data.map(mapProductToProduto));
-    if (a.data) setAlugueis(a.data.map((item: any) => ({ ...item, itens: item.itens || [] })));
+    
+    // 🚩 CORREÇÃO AQUI: Forçando a leitura dos valores financeiros
+    if (a.data) {
+      const formatados = a.data.map((item: any) => ({
+        ...item,
+        valor_antecipado: Number(item.valor_antecipado || 0),
+        taxa_entrega: Number(item.taxa_entrega || 0),
+        itens: item.itens || []
+      }));
+      setAlugueis(formatados);
+    }
     
     if (s.data) {
       setDadosEmpresa({
-        name: s.data.name, 
-        cnpj: s.data.cnpj, 
-        address: s.data.address,
-        phone: s.data.phone, 
-        whatsapp: s.data.whatsapp, 
-        email: s.data.email, 
+        name: s.data.name, cnpj: s.data.cnpj, address: s.data.address,
+        phone: s.data.phone, whatsapp: s.data.whatsapp, email: s.data.email, 
         responsible_name: s.data.responsible_name
       });
     }
@@ -108,15 +114,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => { carregarTudo(); }, [carregarTudo]);
 
   const atualizarDadosEmpresa = useCallback(async (d: DadosEmpresa) => {
-    const { error } = await supabase
-      .from('company_settings')
-      .update({
+    const { error } = await supabase.from('company_settings').update({
         name: d.name, cnpj: d.cnpj, address: d.address,
         phone: d.phone, whatsapp: d.whatsapp, email: d.email,
         responsible_name: d.responsible_name
-      })
-      .eq('id', '00000000-0000-0000-0000-000000000000');
-
+      }).eq('id', '00000000-0000-0000-0000-000000000000');
     if (error) throw error;
     setDadosEmpresa(d);
     toast.success("Empresa atualizada!");
@@ -163,13 +165,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       p_valor_desconto: params.valor_desconto || 0
     });
     if (error) throw error;
-    await carregarTudo();
+    await carregarTudo(); // 🚩 Atualiza a lista para limpar contratos finalizados
   }, [carregarTudo]);
 
   const cancelarAluguel = useCallback(async (id: string) => {
-    const { error } = await supabase.rpc('cancelar_aluguel_estorno', {
-      p_aluguel_id: id
-    });
+    const { error } = await supabase.rpc('cancelar_aluguel_estorno', { p_aluguel_id: id });
     if (error) throw error;
     await carregarTudo();
   }, [carregarTudo]);
