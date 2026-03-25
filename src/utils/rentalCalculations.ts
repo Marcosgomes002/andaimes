@@ -2,19 +2,25 @@ import { DiaNaoCobrado } from '@/types';
 import { addDays, differenceInCalendarDays, format, isSunday, parseISO } from 'date-fns';
 
 /**
- * Calcula dias cobrados entre duas datas...
+ * Calcula dias cobrados entre duas datas (Exclui Domingos e Datas Isentas)
  */
 export function calcularDiasCobrados(
   dataInicio: string,
   dataFim: string,
   diasNaoCobrados: DiaNaoCobrado[]
 ): number {
-  if (!dataInicio || !dataFim) return 0; // 🚩 Proteção contra datas vazias
+  if (!dataInicio || !dataFim) return 0;
+  
   const inicio = parseISO(dataInicio);
   const fim = parseISO(dataFim);
 
-  const totalDias = differenceInCalendarDays(fim, inicio) + 1;
-  if (totalDias <= 0) return 0;
+  // 🚩 CORREÇÃO: Usamos apenas a diferença de dias (intervalos).
+  // Se for do dia 25 ao 31, a diferença é 6 (o que você quer).
+  let totalDias = differenceInCalendarDays(fim, inicio);
+  
+  // 🚩 REGRA DE OURO: Se alugou e devolveu no mesmo dia (25 ao 25), 
+  // a diferença é 0, mas cobramos o valor de 1 diária.
+  if (totalDias === 0) return 1;
 
   const datasNaoCobradas = new Set(
     (diasNaoCobrados || []).filter((d) => d.ativo).map((d) => d.data)
@@ -22,17 +28,20 @@ export function calcularDiasCobrados(
 
   let diasCobrados = 0;
 
+  // O loop agora percorre a quantidade exata de intervalos de diárias
   for (let i = 0; i < totalDias; i++) {
     const dia = addDays(inicio, i);
     const diaStr = format(dia, 'yyyy-MM-dd');
 
+    // Pula domingos e datas isentas cadastradas
     if (isSunday(dia)) continue;
     if (datasNaoCobradas.has(diaStr)) continue;
 
     diasCobrados++;
   }
 
-  return diasCobrados;
+  // Garantia final: se sobrar 0 após os descontos, retorna 1 diária mínima
+  return diasCobrados === 0 ? 1 : diasCobrados;
 }
 
 export function calcularDataFim(
@@ -66,7 +75,7 @@ export function calcularDataFim(
 }
 
 /**
- * Status visual do aluguel (Adicionado 'cancelado' e 'finalizado')
+ * Status visual do aluguel
  */
 export function calcularStatusAluguel(
   dataPrevista: string,
@@ -96,33 +105,29 @@ export function calcularValorDevolucao(
 
   const diasAtraso = Math.max(0, diasCobradosTotal - diasCobradosPrevistos);
   const valorBase = diasCobradosTotal * valorDiarioTotal;
-  const valorAdicional = diasAtraso * valorDiarioTotal;
-  const valorJaPago = pagouAntecipado ? (valorAntecipado || 0) : 0;
+  const valorJaPago = pagouAntecipado ? (Number(valorAntecipado) || 0) : 0;
 
-  const valorTotalCalculado = valorBase + valorAdicional + (valorAvaria || 0);
-  const saldoRestante = Math.max(0, valorTotalCalculado - valorJaPago);
+  const valorTotalCalculado = valorBase + (valorAvaria || 0);
+  const saldoRestante = valorTotalCalculado - valorJaPago;
 
   return {
     diasCobrados: diasCobradosTotal,
     diasAtraso,
     valorBase,
-    valorAdicional,
     valorJaPago,
     valorTotalCalculado,
     saldoRestante,
   };
 }
 
-// 🚩 FORMATAR MOEDA COM PROTEÇÃO (Corrige o erro de null)
 export function formatarMoeda(valor: number | null | undefined): string {
-  const v = valor || 0; 
+  const v = Number(valor) || 0; 
   return v.toLocaleString('pt-BR', {
     style: 'currency',
     currency: 'BRL',
   });
 }
 
-// 🚩 FORMATAR DATA COM PROTEÇÃO
 export function formatarData(data: string | null | undefined): string {
   if (!data) return '-';
   try {
