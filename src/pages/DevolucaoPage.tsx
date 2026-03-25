@@ -23,7 +23,11 @@ export default function DevolucaoPage() {
   const [obsAvaria, setObsAvaria] = useState('');
   const [calculado, setCalculado] = useState(false);
 
-  const alugueisAbertos = alugueis.filter((a) => a.status !== 'finalizado' && a.status !== 'cancelado');
+  // 🚩 FILTRO CORRIGIDO: Só mostra o que está 'ativo' ou 'atrasado'
+  const alugueisAbertos = useMemo(() => {
+    return alugueis.filter((a) => a.status !== 'finalizado' && a.status !== 'cancelado');
+  }, [alugueis]);
+
   const aluguel = useMemo(() => alugueis.find((a) => a.id === aluguelId), [alugueis, aluguelId]);
 
   const handleAluguelChange = (id: string) => {
@@ -46,16 +50,18 @@ export default function DevolucaoPage() {
 
   const valorAvariaNumero = parseFloat(valorAvaria) || 0;
   const valorDescontoNumero = parseFloat(valorDesconto) || 0;
+  
+  // Cálculo base: (Dias * Valor das diárias) + Taxa de Entrega original
   const valorBaseAluguel = (diasCobradosReal * valorDiariasPorDia) + (Number(aluguel?.taxa_entrega) || 0);
   
-  // 🚩 CORREÇÃO: Buscando o valor antecipado do banco de dados
+  // Valor que o cliente já pagou na abertura do contrato
   const valorJaPago = useMemo(() => {
-    if (!aluguel) return 0;
-    return Number(aluguel.valor_antecipado || 0);
+    return Number(aluguel?.valor_antecipado || 0);
   }, [aluguel]);
   
+  // 🚩 CORREÇÃO DE VARIÁVEL: valorTotalComAvarias
   const valorTotalComAvarias = valorBaseAluguel + valorAvariaNumero - valorDescontoNumero;
-  const saldoFinal = valorTotalComComAvarias - valorJaPago;
+  const saldoFinal = valorTotalComAvarias - valorJaPago;
 
   const handleCalcular = () => {
     if (!aluguel) return toast.error('Selecione um aluguel');
@@ -86,7 +92,9 @@ export default function DevolucaoPage() {
   return (
     <div className="max-w-4xl space-y-6 pb-10">
       <div className="flex items-center gap-4">
-        <Button variant="outline" size="icon" onClick={() => navigate('/alugueis')}><ArrowLeft className="h-4 w-4" /></Button>
+        <Button variant="outline" size="icon" onClick={() => navigate('/alugueis')}>
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
         <h2 className="text-2xl font-bold flex items-center gap-2">
           <RotateCcw className="h-6 w-6" /> Registrar Devolução
         </h2>
@@ -96,7 +104,7 @@ export default function DevolucaoPage() {
         <CardContent className="space-y-4 pt-6">
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <Label>Selecionar Contrato</Label>
+              <Label>Selecionar Contrato Ativo</Label>
               <select
                 value={aluguelId}
                 onChange={(e) => handleAluguelChange(e.target.value)}
@@ -129,7 +137,7 @@ export default function DevolucaoPage() {
       {aluguel && (
         <>
           <Card>
-            <CardHeader className="bg-muted/30"><CardTitle className="text-sm uppercase font-bold">Resumo Financeiro</CardTitle></CardHeader>
+            <CardHeader className="bg-muted/30"><CardTitle className="text-sm uppercase font-bold">Avarias e Descontos</CardTitle></CardHeader>
             <CardContent className="pt-6 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
@@ -137,11 +145,11 @@ export default function DevolucaoPage() {
                   <Input type="number" value={valorAvaria} onChange={(e) => {setValorAvaria(e.target.value); setCalculado(false);}} placeholder="0,00" />
                 </div>
                 <div>
-                  <Label className="text-green-600 font-bold">Desconto (R$)</Label>
+                  <Label className="text-green-600 font-bold">Conceder Desconto (R$)</Label>
                   <Input type="number" className="border-green-200" value={valorDesconto} onChange={(e) => {setValorDesconto(e.target.value); setCalculado(false);}} placeholder="0,00" />
                 </div>
               </div>
-              <Textarea value={obsAvaria} onChange={(e) => setObsAvaria(e.target.value)} placeholder="Observações sobre avarias ou motivos do desconto..." />
+              <Textarea value={obsAvaria} onChange={(e) => setObsAvaria(e.target.value)} placeholder="Observações importantes..." />
             </CardContent>
           </Card>
 
@@ -159,37 +167,28 @@ export default function DevolucaoPage() {
                   </div>
                 )}
                 {valorDescontoNumero > 0 && (
-                  <div className="flex justify-between text-sm text-green-600">
+                  <div className="flex justify-between text-sm text-green-600 font-bold">
                     <span>(-) Desconto Concedido:</span>
                     <span>{formatarMoeda(valorDescontoNumero)}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-sm border-t pt-2 font-semibold">
-                  <span>Subtotal:</span>
-                  <span>{formatarMoeda(valorTotalComAvarias)}</span>
-                </div>
-                <div className="flex justify-between text-sm text-blue-600 italic">
-                  <span>(-) Valor Antecipado (Pago no início):</span>
+                <div className="flex justify-between text-sm border-t pt-2 text-blue-600 font-medium italic">
+                  <span>(-) Valor Pago Antecipado:</span>
                   <span>{formatarMoeda(valorJaPago)}</span>
                 </div>
                 <div className="flex justify-between text-xl font-bold border-t-2 border-primary pt-3 mt-2">
-                  <span>SALDO FINAL:</span>
+                  <span>SALDO A RECEBER:</span>
                   <span className={saldoFinal >= 0 ? "text-primary" : "text-blue-600"}>
                     {formatarMoeda(saldoFinal)}
                   </span>
                 </div>
-                {saldoFinal < 0 && (
-                  <p className="text-xs text-blue-600 text-right font-medium">
-                    * Valor negativo indica que o cliente tem crédito ou troco a receber.
-                  </p>
-                )}
               </CardContent>
             </Card>
           )}
 
           <div className="flex gap-4">
             <Button variant="outline" className="flex-1" onClick={() => navigate('/alugueis')}>Cancelar</Button>
-            <Button className="flex-1 h-12 shadow-md" onClick={confirmar} disabled={!calculado}>Finalizar Devolução</Button>
+            <Button className="flex-1 h-12 shadow-md bg-primary" onClick={confirmar} disabled={!calculado}>Finalizar Devolução</Button>
           </div>
         </>
       )}
