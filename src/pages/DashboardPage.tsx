@@ -65,7 +65,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-primary">PAINEL DE CONTROLE OSIEL</h2>
+      <h2 className="text-2xl font-bold text-primary">ConstruMaia</h2>
 
       {/* KPI Cards Superiores */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
