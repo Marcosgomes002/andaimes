@@ -30,6 +30,7 @@ interface AppState {
   atualizarDiaNaoCobrado: (d: DiaNaoCobrado) => void;
   removerDiaNaoCobrado: (id: string) => void;
   criarAluguel: (params: any) => Promise<any>;
+  atualizarAluguel: (id: string, params: any) => Promise<void>; // ADICIONADO NA INTERFACE
   registrarDevolucao: (params: any) => Promise<void>;
   cancelarAluguel: (id: string) => Promise<void>;
   atualizarDadosEmpresa: (d: DadosEmpresa) => Promise<void>;
@@ -48,7 +49,6 @@ export function useApp() {
   return ctx;
 }
 
-// Funções de mapeamento para garantir que o código entenda o banco
 function mapCustomerToCliente(c: any): Cliente {
   return {
     id: c.id, nome: c.nome ?? '', cpf: c.cpf ?? '', celular: c.celular ?? '',
@@ -86,7 +86,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (p.data) setProdutos(p.data.map(mapProductToProduto));
     if (a.data) setAlugueis(a.data.map((item: any) => ({ ...item, itens: item.itens || [] })));
     
-    // CORREÇÃO: Mapeia do banco (inglês) para o seu estado (português/inglês conforme seu tipo)
     if (s.data) {
       setDadosEmpresa({
         name: s.data.name, 
@@ -102,26 +101,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => { carregarTudo(); }, [carregarTudo]);
 
-  // --- 🔄 ATUALIZAR DADOS DA EMPRESA (AQUI ESTAVA O ERRO) ---
   const atualizarDadosEmpresa = useCallback(async (d: DadosEmpresa) => {
     const { error } = await supabase
       .from('company_settings')
       .update({
-        name: d.name,
-        cnpj: d.cnpj,
-        address: d.address,
-        phone: d.phone,
-        whatsapp: d.whatsapp,
-        email: d.email,
+        name: d.name, cnpj: d.cnpj, address: d.address,
+        phone: d.phone, whatsapp: d.whatsapp, email: d.email,
         responsible_name: d.responsible_name
       })
       .eq('id', '00000000-0000-0000-0000-000000000000');
 
-    if (error) {
-      console.error(error);
-      throw error;
-    }
+    if (error) throw error;
     setDadosEmpresa(d);
+    toast.success("Empresa atualizada!");
   }, []);
 
   const atualizarProduto = useCallback(async (p: Produto) => {
@@ -137,13 +129,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const criarAluguel = useCallback(async (params: any) => {
     const numero_contrato = `CTR-${Date.now()}`;
-    const { error } = await supabase.rpc('criar_aluguel_final', {
+    const { error } = await supabase.rpc('criar_aluguel_v3', { // MUDADO PARA v3
       p_aluguel: { ...params, numero_contrato, status: 'ativo' },
       p_itens: params.itens
     });
     if (error) throw error;
     await carregarTudo();
     return { numero_contrato };
+  }, [carregarTudo]);
+
+  // --- NOVA FUNÇÃO DE ATUALIZAR ALUGUEL (ADICIONADA) ---
+  const atualizarAluguel = useCallback(async (id: string, params: any) => {
+    const { error } = await supabase.rpc('editar_aluguel_v3', {
+      p_aluguel_id: id,
+      p_aluguel: params,
+      p_itens: params.itens
+    });
+    if (error) throw error;
+    await carregarTudo();
   }, [carregarTudo]);
 
   const registrarDevolucao = useCallback(async (params: any) => {
@@ -179,12 +182,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
     produtoTemAluguelAtivo: () => false,
     adicionarDiaNaoCobrado: () => {}, atualizarDiaNaoCobrado: () => {}, removerDiaNaoCobrado: () => {},
-    criarAluguel, registrarDevolucao, cancelarAluguel, atualizarDadosEmpresa,
+    criarAluguel, atualizarAluguel, registrarDevolucao, cancelarAluguel, atualizarDadosEmpresa,
     getCliente: (id: string) => clientes.find(c => c.id === id),
     getProduto: (id: string) => produtos.find(p => p.id === id),
     getAluguel: (id: string) => alugueis.find(a => a.id === id),
     getMovimentacoesProduto: () => [], getAlugueisCliente: (id: string) => alugueis.filter(a => a.cliente_id === id)
-  }), [clientes, produtos, alugueis, diasNaoCobrados, movimentacoes, dadosEmpresa, atualizarProduto, criarAluguel, registrarDevolucao, cancelarAluguel, atualizarDadosEmpresa, carregarTudo]);
+  }), [clientes, produtos, alugueis, diasNaoCobrados, movimentacoes, dadosEmpresa, atualizarProduto, criarAluguel, atualizarAluguel, registrarDevolucao, cancelarAluguel, atualizarDadosEmpresa, carregarTudo]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

@@ -1,8 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
-// import { Toaster } from "@/components/ui/toaster";
-// import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppProvider } from "@/contexts/AppContext";
 import { AppLayout } from "@/components/AppLayout";
 import DashboardPage from "./pages/DashboardPage";
@@ -10,6 +8,7 @@ import ProdutosPage from "./pages/ProdutosPage";
 import ClientesPage from "./pages/ClientesPage";
 import DiasNaoCobradosPage from "./pages/DiasNaoCobradosPage";
 import NovoAluguelPage from "./pages/NovoAluguelPage";
+import EditarAluguelPage from "./pages/editar/EditarAluguelPage"; // Importação atualizada para a pasta editar
 import AlugueisPage from "./pages/AlugueisPage";
 import DevolucaoPage from "./pages/DevolucaoPage";
 import FinanceiroPage from "./pages/FinanceiroPage";
@@ -34,6 +33,8 @@ const App = () => {
               <Route path="/clientes" element={<ClientesPage />} />
               <Route path="/dias-nao-cobrados" element={<DiasNaoCobradosPage />} />
               <Route path="/alugueis/novo" element={<NovoAluguelPage />} />
+              {/* Rota de edição adicionada abaixo */}
+              <Route path="/alugueis/editar/:id" element={<EditarAluguelPage />} />
               <Route path="/alugueis" element={<AlugueisPage />} />
               <Route path="/devolucao" element={<DevolucaoPage />} />
               <Route path="/financeiro" element={<FinanceiroPage />} />
